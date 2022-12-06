@@ -2,7 +2,7 @@ const {Router,application} = require('express');
 const router = Router();
 
 //importacion de metodos para las rutas
-const {holaDev,getAnimales,getZo} = require('../controllers/index.controller');
+const {holaDev,getAnimales,getZoo} = require('../controllers/index.controller');
 
 //Definicion de rutas
 /*GET - Trae datos
