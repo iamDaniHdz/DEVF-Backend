@@ -21,9 +21,13 @@ const getAnimales = async (req,res) =>{
 }
 
 const getZoo = async (req,res) =>{
-    const response = await pool.query('SELECT * FROM zoo');
-    console.log(response.rows)
-    res.status(200).json(response.rows)
+    try{
+        const response = await pool.query('SELECT * FROM zoo');
+        console.log(response)
+        res.status(200).json(response.rows)
+    }catch(error){
+        res.status(500).json({"Error": error.message})
+    }
 }
 
 module.exports = {

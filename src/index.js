@@ -4,6 +4,7 @@ const app = express();
 
 // Configuraciones del backend
 app.use(express.json());
+app.use(express.urlencoded({extended:false}))
 
 //Se comienza el enrutamiento
 app.use(require('./routes/index'));
