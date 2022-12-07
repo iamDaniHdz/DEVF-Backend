@@ -121,20 +121,111 @@ const sinDatos = (consulta,res) =>{
 
 const addZoo = async (req,res) =>{
     try{
-        let expresion = new RegExp("\D");
+       // Solo letras ^[a-zA-Z]+$ <- Zoo Paris
+        // Solo números ^[0-9]*$
+        // Solo números con punto decimal ^[0-9]+[.]+[0-9]*$
+
+        //Definición de expresiones regulares
+        //let exTexto = new RegExp("^[a-zA-Z]+$");
+        let exNumero = new RegExp("^[0-9]*$");
+        let exReal = new RegExp("^[0-9]+[.]+[0-9]*$");
+        let exTexto = /^[a-zA-Z\s]*$/;
+        
+        //Obtención de datos del body de la request
         const {nombre,ciudad,pais,tamanio,presupuesto_anual} = req.body;
-        console.log(nombre.match(expresion));
+      
+        // Validaciones contra expresiones regulares
+        if((!exTexto.test(nombre)  || !exTexto.test(ciudad) || !exTexto.test(pais) || !exReal.test(tamanio) || !exReal.test(presupuesto_anual)) 
+        && !exNumero.test(tamanio) && !exNumero.test(presupuesto_anual)){
+            res.status(200).json({"Estatus": "Falso" , "mensaje":"Tu registro no se pudo realizar, checa tus datos"});
+            return;
+        }
+        
+        //Validación de registros repetidos
+        let aux = await pool.query('SELECT * FROM zoo WHERE nombre = $1',[nombre]);
+
+        if(aux.rowCount != 0){
+            res.status(200).json({"Estatus": "Falso" , "mensaje":"Tu registro no se pudo realizar, ya existe en la base"});
+            return;
+        }
+
+        //Ingreso de datos a la base
         await pool.query('INSERT INTO zoo(nombre,ciudad,pais,tamanio,presupuesto_anual) VALUES ($1,$2,$3,$4,$5)',[nombre,ciudad,pais,tamanio,presupuesto_anual]);
         res.status(200).json({"Estatus": "ok" , "mensaje":"Tu registro fue exitoso"});
+
     }catch(error){
         res.status(500).json({"error": error.message});
     }
 }
+
+const deleteZoo = async (req,res) =>{
+    try{
+        const {id_zoo,nombre} = req.body;
+
+
+        if(id_zoo != ''){
+            console.log("Estamos borrando con id_zoo");
+            await pool.query('DELETE FROM zoo WHERE nombre = $1 AND id_zoo = $2',[nombre,id_zoo]);
+            res.status(200).json({"Estatus": "ok" , "mensaje":"Tu registro se elimino correctamente"});
+            return;
+        }
+
+        await pool.query('DELETE FROM zoo WHERE nombre = $1',[nombre]);
+        res.status(200).json({"Estatus": "ok" , "mensaje":"Tu registro se elimino correctamente"});
+    }catch(error){
+        res.status(500).json({"error": error.message});
+    }
+}
+
+const updateZoo = async (req,res) => {
+    try{
+        let exNumero = new RegExp("^[0-9]*$");
+        let exReal = new RegExp("^[0-9]+[.]+[0-9]*$");
+        let exTexto = /^[a-zA-Z\s]*$/;
+
+        //Obtención de datos del body de la request
+        const {nombre,tamanio,presupuesto_anual,tipo_modificacion,id_zoo} = req.body;
+
+        // Validaciones contra expresiones regulares
+        if(!exTexto.test(nombre)   || !exReal.test(tamanio) || !exReal.test(presupuesto_anual) && !exNumero.test(tamanio) && !exNumero.test(presupuesto_anual)){
+            res.status(200).json({"Estatus": "Falso" , "mensaje":"Tu registro no se pudo realizar, checa tus datos"});
+            return;
+        }
+
+        // 1. Solo por nombre
+        // 2. Solo por tamanio
+        // 3. Solo presupuesto_anual
+        // 4. nombre y tamanio
+        // 5. nombre y presupuesto_anual
+        // 6. tamanio y presupuesto_anual
+        // 7. nombre,tamanio y presupuesto_anual
+
+        let dict = {
+            "1": await pool.query('UPDATE zoo set nombre = $1 WHERE id_zoo = $2',[nombre,id_zoo]),
+            "2": await pool.query('UPDATE zoo set tamanio = $1 WHERE id_zoo = $2',[tamanio,id_zoo]),
+            "3": await pool.query('UPDATE zoo set presupuesto_anual = $1 WHERE id_zoo = $2',[presupuesto_anual,id_zoo]),
+            "4": await pool.query('UPDATE zoo set nombre = $1, tamanio=$2 WHERE id_zoo = $3',[nombre,tamanio,id_zoo]),
+            "5": await pool.query('UPDATE zoo set nombre = $1, presupuesto_anual=$2 WHERE id_zoo = $3',[nombre,presupuesto_anual,id_zoo]),
+            "6": await pool.query('UPDATE zoo set tamanio = $1, presupuesto_anual=$2 WHERE id_zoo = $3',[tamanio,presupuesto_anual,id_zoo]),
+            "7": await pool.query('UPDATE zoo set nombre = $1,tamanio = $2, presupuesto_anual=$3 WHERE id_zoo = $4',[nombre,tamanio,presupuesto_anual,id_zoo]),
+        }
+
+        response = dict[tipo_modificacion];
+
+        res.status(200).json({"Estatus": "ok" , "mensaje":"Tu registro fue exitosamente actualizado"});
+
+    }catch(error){
+        res.status(500).json({"error": error.message});
+    }
+};
+
 
 module.exports = {
     holaDev,
     getAnimales,
     getZoo,
     getEspecies,
-    addZoo
+    addZoo,
+    deleteZoo,
+    updateZoo
 }
