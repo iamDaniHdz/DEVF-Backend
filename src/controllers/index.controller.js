@@ -14,10 +14,34 @@ const holaDev = (req,res) =>{
 } 
 
 const getAnimales = async (req,res) =>{
-    res.json({
-        'nombre' : 'perro',
-        'edad': '3'
-    });
+    // Agregar la consulta de que animales tiene el zoo
+
+    /*
+        SELECT zoo.nombre,animal.continente,especie.nombre_vulgar FROM zoo 
+        INNER JOIN zoo_especie ON zoo.id_zoo = zoo_especie.id_zoo
+        INNER JOIN especie ON zoo_especie.id_especie = especie.id_especie
+        INNER JOIN animal ON zoo_especie.id_especie = animal.id_especie;
+    */
+    try{
+        let response = await pool.query('SELECT animal.*, especie.nombre_vulgar FROM animal INNER JOIN especie ON animal.id_especie = especie.id_especie');
+
+        if(Object.keys(req.query).includes('nombre_vulgar')){
+            const {nombre_vulgar} = req.query;
+            let aux = await pool.query('SELECT id_especie FROM especie WHERE nombre_vulgar = $1',[nombre_vulgar]);
+            if(sinDatos(aux,res)) return;
+            aux = aux.rows[0].id_especie;
+            response = await pool.query(
+                'SELECT animal.*, especie.nombre_vulgar FROM animal INNER JOIN especie ON animal.id_especie = especie.id_especie WHERE especie.id_especie = $1',
+                [aux]);
+        }
+
+        if(sinDatos(response,res)) return;
+
+        res.status(200).json(response.rows);
+
+    }catch(error){
+        res.status(500).json({"error": error.message});
+    }
 }
 
 const getEspecies = async (req,res) =>{
@@ -87,9 +111,30 @@ const getZoo = async (req,res) =>{
     }
 }
 
+const sinDatos = (consulta,res) =>{
+    if(consulta.rowCount == 0){
+        res.status(200).json({"Estatus":"No existe ningun registro"});
+        return true;
+    }
+    return false;
+}
+
+const addZoo = async (req,res) =>{
+    try{
+        let expresion = new RegExp("\D");
+        const {nombre,ciudad,pais,tamanio,presupuesto_anual} = req.body;
+        console.log(nombre.match(expresion));
+        await pool.query('INSERT INTO zoo(nombre,ciudad,pais,tamanio,presupuesto_anual) VALUES ($1,$2,$3,$4,$5)',[nombre,ciudad,pais,tamanio,presupuesto_anual]);
+        res.status(200).json({"Estatus": "ok" , "mensaje":"Tu registro fue exitoso"});
+    }catch(error){
+        res.status(500).json({"error": error.message});
+    }
+}
+
 module.exports = {
     holaDev,
     getAnimales,
     getZoo,
-    getEspecies
+    getEspecies,
+    addZoo
 }
